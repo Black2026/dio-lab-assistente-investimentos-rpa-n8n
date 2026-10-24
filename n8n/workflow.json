@@ -1,0 +1,269 @@
+{
+  "name": "Assistente Investimentos DIO - revisao segura",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "Clientes",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -448,
+        0
+      ],
+      "id": "49222dc4-59bf-45f9-88e5-2facfa9256b2",
+      "name": "Webhook",
+      "webhookId": "01217ce5-8b38-4d65-8b9e-f46d6930b6e9"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: \"ok\", total_clientes: $(\"Validar mensagens\").all().length, total_mensagens: $(\"Validar mensagens\").all().filter(item => Boolean(item.json.mensagem)).length, envio_automatico: false }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1050,
+        -220
+      ],
+      "id": "263b4a41-5054-48a9-90c1-a17bb0df46cb",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "url": "https://digitalinnovationone.github.io/dio-lab-assistente-investimentos-rpa-n8n/data.csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -224,
+        0
+      ],
+      "id": "28345197-fd3c-4191-9b5c-68745d4d2896",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst entrada = $('HTTP Request').first().json;\nconst csv = entrada.data ?? entrada.body ?? entrada.text;\n\nif (typeof csv !== 'string' || !csv.trim()) {\n  throw new Error('CSV não encontrado na saída HTTP');\n}\n\nfunction parseCSV(s) {\n  const rows = [];\n  let row = [], field = '', quoted = false;\n\n  for (let i = 0; i < s.length; i++) {\n    const c = s[i];\n\n    if (c === '\"') {\n      if (quoted && s[i + 1] === '\"') {\n        field += '\"';\n        i++;\n      } else {\n        quoted = !quoted;\n      }\n    } else if (c === ',' && !quoted) {\n      row.push(field);\n      field = '';\n    } else if ((c === '\\n' || c === '\\r') && !quoted) {\n      if (c === '\\r' && s[i + 1] === '\\n') i++;\n      row.push(field);\n      if (row.some(x => x.trim())) rows.push(row);\n      row = [];\n      field = '';\n    } else {\n      field += c;\n    }\n  }\n\n  if (quoted) throw new Error('CSV com aspas não fechadas');\n\n  row.push(field);\n  if (row.some(x => x.trim())) rows.push(row);\n  return rows;\n}\n\nconst rows = parseCSV(csv.replace(/^\\uFEFF/, ''));\n\nif (rows.length < 2) throw new Error('CSV sem dados');\n\nconst header = rows.shift().map(x => x.trim().toLowerCase());\n\nfor (const col of ['perfil', 'produto', 'minimo', 'rentabilidade']) {\n  if (!header.includes(col)) {\n    throw new Error('Coluna ausente: ' + col);\n  }\n}\n\nreturn rows.map((r, n) => {\n  if (r.length !== header.length) {\n    throw new Error('Quantidade de colunas inválida na linha ' + (n + 2));\n  }\n\n  const obj = Object.fromEntries(\n    header.map((k, i) => [k, r[i].trim()])\n  );\n\n  const raw = obj.minimo.replace(/R\\$|\\s/g, '');\n\n  obj.minimo = Number(\n    raw.includes(',')\n      ? raw.replace(/\\./g, '').replace(',', '.')\n      : raw\n  );\n\n  if (!Number.isFinite(obj.minimo) || obj.minimo < 0) {\n    throw new Error('Mínimo inválido na linha ' + (n + 2));\n  }\n\n  return { json: obj };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "60cdaf35-fe70-4f53-a6d4-35648fc7ce95",
+      "name": "Normalizar investimentos"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst clientes = $('Webhook').first().json.body?.clientes;\nconst investimentos = $('Normalizar investimentos').all().map(x => x.json);\n\nif (!Array.isArray(clientes)) {\n  throw new Error('Webhook: body.clientes deve ser uma lista');\n}\n\nconst normalizar = x => String(x ?? '')\n  .trim()\n  .normalize('NFD')\n  .replace(/[\\u0300-\\u036f]/g, '')\n  .toLowerCase();\n\nconst dinheiro = x => {\n  if (typeof x === 'number') return x;\n  const s = String(x ?? '').replace(/R\\$|\\s/g, '');\n  return Number(\n    s.includes(',')\n      ? s.replace(/\\./g, '').replace(',', '.')\n      : s\n  );\n};\n\nconst resultados = clientes.map(cliente => {\n  const saldo = dinheiro(cliente.saldo);\n\n  if (!Number.isFinite(saldo) || saldo < 0) {\n    return {\n      json: {\n        ...cliente,\n        status: 'dados_invalidos',\n        motivo: 'Saldo inválido'\n      }\n    };\n  }\n\n  const elegiveis = investimentos.filter(i =>\n    normalizar(i.perfil) === normalizar(cliente.perfil) &&\n    Number.isFinite(dinheiro(i.minimo)) &&\n    dinheiro(i.minimo) >= 0 &&\n    dinheiro(i.minimo) <= saldo\n  );\n\n  if (!elegiveis.length) {\n    return {\n      json: {\n        ...cliente,\n        status: 'sem_opcao',\n        motivo: 'Nenhum produto compatível com perfil e saldo'\n      }\n    };\n  }\n\n  const escolhido = [...elegiveis].sort((a, b) =>\n    dinheiro(a.minimo) - dinheiro(b.minimo) ||\n    String(a.produto).localeCompare(String(b.produto), 'pt-BR')\n  )[0];\n\n  return {\n    json: {\n      nome: cliente.nome,\n      email: cliente.email,\n      perfil: cliente.perfil,\n      saldo,\n      produto: escolhido.produto,\n      rentabilidade: escolhido.rentabilidade,\n      investimento_minimo: dinheiro(escolhido.minimo),\n      status: 'elegivel',\n      mensagem_estatica:\n        `Olá, ${cliente.nome}. Identificamos o produto ${escolhido.produto} ` +\n        `como uma possibilidade para análise, considerando o perfil ` +\n        `${cliente.perfil} e o valor mínimo de aplicação. ` +\n        `A rentabilidade informada é ${escolhido.rentabilidade}; ` +\n        `não há garantia de resultados futuros. ` +\n        `Antes de investir, confira riscos, liquidez e condições.`\n    }\n  };\n});\n\nreturn resultados;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "03cc79dd-a7b0-40e4-b990-b78380116072",
+      "name": "Selecionar investimentos"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=\n{{ \n`Você é um assistente de comunicação financeira.\n\nCrie uma mensagem curta, cordial e profissional\npara um cliente fictício de um laboratório educacional.\n\nNome: ${$json.nome}\nPerfil de investidor: ${$json.perfil}\nProduto identificado: ${$json.produto}\nRentabilidade informada: ${$json.rentabilidade}\nInvestimento mínimo: R$ ${$json.investimento_minimo}\n\nRegras:\n- Cumprimente o cliente pelo primeiro nome.\n- Explique o produto em linguagem simples.\n- Considere o perfil informado.\n- Não prometa ganhos.\n- Não invente taxas, garantias ou condições.\n- Não afirme que o produto é o melhor investimento.\n- Oriente a avaliar riscos, liquidez e objetivos financeiros.\n- Utilize no máximo 120 palavras.\n- Responda apenas com o texto da mensagem.`\n}}\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        0
+      ],
+      "id": "58c90028-cbaa-4600-b5f1-1622e8ba060f",
+      "name": "Message a model",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst respostas = $input.all();\n\nconst clientes = $('Selecionar investimentos').all();\n\nif (respostas.length !== clientes.length) {\n  throw new Error(\n    `Quantidade incompatível: ${respostas.length} respostas ` +\n    `para ${clientes.length} clientes.`\n  );\n}\n\nconst resultados = respostas.map((item, index) => {\n  const cliente = clientes[index].json;\n\n  const mensagem =\n    item.json.output?.[0]?.content?.find(\n      parte => parte.type === 'output_text'\n    )?.text;\n\n  if (typeof mensagem !== 'string' || !mensagem.trim()) {\n    throw new Error(\n      `Mensagem ausente para o cliente na posição ${index + 1}`\n    );\n  }\n\n  const email = String(cliente.email ?? '').trim();\n\n  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {\n    throw new Error(\n      `E-mail inválido para o cliente na posição ${index + 1}`\n    );\n  }\n\n  return {\n    json: {\n      nome: cliente.nome,\n      email,\n      perfil: cliente.perfil,\n      saldo: cliente.saldo,\n      produto: cliente.produto,\n      rentabilidade: cliente.rentabilidade,\n      investimento_minimo: cliente.investimento_minimo,\n      status: cliente.status,\n      assunto: 'Informações sobre investimentos',\n      mensagem: mensagem.trim(),\n      aprovado_para_envio: false\n    }\n  };\n});\n\nreturn resultados;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        0
+      ],
+      "id": "119455e4-082e-4cc1-9321-f96c013100e2",
+      "name": "Validar mensagens"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "97a74f0f-7f62-420a-b907-eb535e674581",
+              "leftValue": "={{ $json.aprovado_para_envio }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        1024,
+        0
+      ],
+      "id": "436351ab-6a57-4947-ab99-5e1bb479cfb5",
+      "name": "Autorizar envio"
+    },
+    {
+      "parameters": {
+        "sendTo": "SEU_EMAIL_DE_TESTE@example.com",
+        "subject": "Teste — Assistente de Investimentos DIO",
+        "emailType": "text",
+        "message": "Olá!  Este é um teste de integração entre Google Colab, n8n Cloud e Gmail.  O assistente de investimentos conseguiu extrair 10 clientes, processar os investimentos e gerar mensagens personalizadas com inteligência artificial.  Este e-mail é apenas um teste técnico. Nenhuma recomendação financeira está sendo enviada aos clientes.  Atenciosamente, Assistente de Investimentos — Laboratório DIO",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1248,
+        0
+      ],
+      "id": "80eb7a48-dbdf-47ac-b50e-748099400f98",
+      "name": "Send a message",
+      "webhookId": "263f63ab-34c6-4f9b-a070-44fc427993bd",
+      "disabled": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Normalizar investimentos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar investimentos": {
+      "main": [
+        [
+          {
+            "node": "Selecionar investimentos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Selecionar investimentos": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Validar mensagens",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar mensagens": {
+      "main": [
+        [
+          {
+            "node": "Autorizar envio",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Autorizar envio": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": []
+}
