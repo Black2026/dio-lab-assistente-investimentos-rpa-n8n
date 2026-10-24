@@ -16,7 +16,7 @@ Demonstrar um pipeline educacional: Python lê uma tabela HTML, envia clientes a
 - Respond to Webhook: resposta HTTP deve ser independente do ramo Gmail.
 
 ## Diagnóstico da resposta vazia
-No JSON originalmente exportado, `Respond to Webhook` estava depois do Gmail. Como todos os itens tinham `aprovado_para_envio: false`, nenhum chegava ao Gmail nem ao nó de resposta. O Colab mostrava HTTP 200 com corpo de 0 bytes. Uma revisão foi preparada com a resposta separada do envio, **mas ainda não foi validada no n8n Cloud**.
+No JSON originalmente exportado, `Respond to Webhook` estava depois do Gmail. Como todos os itens tinham `aprovado_para_envio: false`, nenhum chegava ao Gmail nem ao nó de resposta. O Colab mostrava HTTP 200 com corpo de 0 bytes. Uma revisão foi preparada com a resposta separada do envio. **O teste de desenvolvimento no n8n Cloud foi concluído com sucesso**, retornando HTTP 200 e JSON não vazio ao Colab.
 
 ## Evidências de desenvolvimento
 1. Colab: 10 clientes extraídos, status 200; resposta vazia no fluxo original.
@@ -39,14 +39,14 @@ No JSON originalmente exportado, `Respond to Webhook` estava depois do Gmail. Co
 - Filtro de perfil e saldo é simplificado, não avalia liquidez, vencimento, objetivos, riscos específicos ou adequação regulatória.
 - Dados fictícios do laboratório não autorizam mensagens para destinatários externos.
 - Credenciais não devem ser publicadas; inspecionar exports, outputs, notebooks e capturas de tela antes do commit.
-- O notebook **atualmente publicado** em `rpa/extrair_clientes.ipynb` ainda contém `TODO` de envio; precisa ser substituído pela versão Colab testada antes da conclusão.
+- O notebook publicado em `rpa/extrair_clientes.ipynb` contém envio HTTP, diagnóstico e URL de Webhook parametrizável. O endereço operacional deve ser preenchido pelo executor.
 
 ## Checklist de entrega
 - [x] Repositório existente e fontes HTML/CSV disponíveis.
 - [x] Documentação técnica e README atualizados.
 - [x] Testes separados de extração, IA, validação e Gmail demonstrados.
-- [ ] Publicar notebook atualizado e sanitizado.
-- [ ] Importar, testar e publicar JSON revisado em `n8n/workflow.json`.
-- [ ] Confirmar resposta HTTP JSON no Colab.
+- [x] Publicar notebook atualizado e sanitizado.
+- [x] Importar e testar a lógica revisada no n8n Cloud e publicar JSON sem credenciais em `n8n/workflow.json`.
+- [x] Confirmar resposta HTTP JSON no Colab: `{'status':'ok','total_clientes':10,'total_mensagens':10,'envio_automatico':False}`.
 - [ ] Adicionar capturas de tela sanitizadas em `evidencias/`.
 - [ ] Revisar links e entregar URL pública do repositório.
