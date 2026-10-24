@@ -39,10 +39,9 @@ As evidências abaixo foram conferidas em capturas de tela compartilhadas durant
 - O workflow publicado mantém Gmail desativado.
 - O teste confirmado utilizou a **URL de teste** do n8n; a operação contínua via URL de produção não foi validada.
 
-## Capturas de tela a anexar (opcional para reforçar a entrega)
+## Capturas de tela publicadas
 
-1. Colab mostrando total 10, HTTP 200 e resposta JSON.
-2. Canvas do n8n com nós verdes e Gmail desativado.
-3. Configuração do Webhook com POST e Respond to Webhook.
+- [Captura de tela 1 — execução no Colab](Captura%20de%20tela%201.png)
+- [Captura de tela 2 — execução no n8n](Captura%20de%20tela%202.png)
 
-Antes de anexar imagens, ocultar identificadores operacionais, e-mails e qualquer informação sensível.
+As imagens registram o teste de desenvolvimento. O envio automático de e-mails continuou bloqueado.
