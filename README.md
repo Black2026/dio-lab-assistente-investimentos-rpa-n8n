@@ -54,9 +54,15 @@ flowchart TD
 
 ## Situação da entrega
 
-**Teste integrado de desenvolvimento concluído com sucesso.** O Colab recebeu HTTP 200 e JSON de confirmação após processar 10 clientes e 10 mensagens. O notebook e o JSON revisado foram publicados. Restam as evidências no repositório e, opcionalmente, a validação do fluxo importado em modo produção. Nenhum e-mail foi enviado aos 10 clientes.
+**Teste integrado de desenvolvimento concluído com sucesso.** O Colab recebeu HTTP 200 e JSON de confirmação após processar 10 clientes e 10 mensagens. O notebook e o JSON revisado foram publicados. As duas capturas de evidência estão publicadas no repositório; a validação da URL de produção permanece opcional e não foi realizada. Nenhum e-mail foi enviado aos 10 clientes.
 
-Veja os detalhes em [Documentação técnica](docs/IMPLEMENTACAO.md).
+Veja os detalhes em [Documentação técnica](docs/IMPLEMENTACAO.md) e no [Registro de evidências](evidencias/RESULTADO_TESTE.md).
+
+### Capturas de tela do teste final
+
+- [Colab — execução e resposta HTTP](evidencias/Captura%20de%20tela%201.png)
+- [n8n — execução dos nós](evidencias/Captura%20de%20tela%202.png)
+
 
 ## Referências
 
