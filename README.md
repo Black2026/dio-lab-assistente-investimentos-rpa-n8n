@@ -32,7 +32,7 @@ flowchart TD
 | Validação de mensagens | 10 registros |
 | IF de autorização | 10 registros na saída FALSE; 0 na TRUE |
 | Gmail | Workflow **separado** executou 1 operação de teste, sem confirmação de recebimento |
-| Resposta HTTP ao Colab | Na versão original, status 200 com corpo vazio; **correção ainda não testada** |
+| Resposta HTTP ao Colab | **Validada:** status 200 e JSON com status ok, 10 clientes, 10 mensagens e envio automático false |
 
 ## Estrutura do repositório
 
@@ -40,12 +40,12 @@ flowchart TD
 - [`docs/index.html`](docs/index.html): página HTML de clientes do repositório.
 - [`docs/data.csv`](docs/data.csv): base CSV do repositório.
 - [`docs/IMPLEMENTACAO.md`](docs/IMPLEMENTACAO.md): documentação técnica, execução, segurança e pendências.
-- `n8n/workflow.json`: **a publicar após importar e validar a revisão do workflow**.
+- [`n8n/workflow.json`](n8n/workflow.json): workflow revisado publicado, sem credenciais e com Gmail desativado; execução equivalente validada no n8n Cloud.
 - `evidencias/`: **a preencher com capturas de tela sanitizadas**.
 
 ## Como executar
 
-1. Abra o notebook no [Google Colab](https://colab.research.google.com/github/Black2026/dio-lab-assistente-investimentos-rpa-n8n/blob/main/rpa/extrair_clientes.ipynb) e atualize-o para a versão efetivamente testada antes da entrega final.
+1. Abra o notebook no [Google Colab](https://colab.research.google.com/github/Black2026/dio-lab-assistente-investimentos-rpa-n8n/blob/main/rpa/extrair_clientes.ipynb) e configure a URL de teste do Webhook; a versão publicada contém o envio HTTP e diagnóstico.
 2. Importe a revisão do workflow no n8n Cloud como **novo workflow** e configure a credencial OpenAI/Gateway, quando disponível.
 3. No Webhook, use o método `POST`, caminho `Clientes` e resposta via nó `Respond to Webhook`.
 4. Para testes, clique em **Listen for test event** e configure o Colab com a URL de teste exibida no nó, terminada em `/webhook-test/Clientes`.
@@ -54,7 +54,7 @@ flowchart TD
 
 ## Situação da entrega
 
-**Implementação demonstrada parcialmente; teste integrado final pendente.** Ainda é necessário publicar o notebook atualizado, importar e testar o JSON revisado, verificar a resposta HTTP e anexar evidências sem informações sensíveis. Não há afirmação de envio automatizado aos 10 clientes.
+**Teste integrado de desenvolvimento concluído com sucesso.** O Colab recebeu HTTP 200 e JSON de confirmação após processar 10 clientes e 10 mensagens. O notebook e o JSON revisado foram publicados. Restam as evidências no repositório e, opcionalmente, a validação do fluxo importado em modo produção. Nenhum e-mail foi enviado aos 10 clientes.
 
 Veja os detalhes em [Documentação técnica](docs/IMPLEMENTACAO.md).
 
