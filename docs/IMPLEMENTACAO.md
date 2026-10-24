@@ -48,5 +48,5 @@ No JSON originalmente exportado, `Respond to Webhook` estava depois do Gmail. Co
 - [x] Publicar notebook atualizado e sanitizado.
 - [x] Importar e testar a lógica revisada no n8n Cloud e publicar JSON sem credenciais em `n8n/workflow.json`.
 - [x] Confirmar resposta HTTP JSON no Colab: `{'status':'ok','total_clientes':10,'total_mensagens':10,'envio_automatico':False}`.
-- [ ] Adicionar capturas de tela sanitizadas em `evidencias/`.
+- [x] Adicionar duas capturas de tela em `evidencias/`.
 - [ ] Revisar links e entregar URL pública do repositório.
